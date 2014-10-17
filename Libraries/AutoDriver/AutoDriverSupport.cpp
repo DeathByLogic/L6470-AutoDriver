@@ -275,14 +275,60 @@ unsigned long AutoDriver::xferParam(unsigned long value, byte bitLen)
 //  shifted THROUGH the chip, not into it. To latch data, CS must be released
 //  after each byte. I can't find a reference to this in the datasheet, which
 //  is AWESOME, and I've personally discovered it at least twice.
+//
+// Modified function to transmit SPI data over software base SPI master and
+//  receive return SPI data on the hardware SPI in slave mode. This will allow
+//  for the transmission of the SPI bus over long distances where the data
+//  would normaly get out of sync with the clock. See link below for more info.
+//  http://www.deathbylogic.com/2014/10/spi-over-long-distances/ 
 byte AutoDriver::SPIXfer(byte data)
 {
   byte rxData;
-  digitalWrite(_CSPin, LOW);
-  SPDR = data;
+  
+  // The built in Arduino digitalWrite function is to slow to use for the SPI  
+  // bus and the AutoDriver will not respond. So the pins are being accessed
+  // directly to speed up the bus.
+  
+  // Get bit mask for SPI Master signals
+  uint8_t cs_mask = digitalPinToBitMask(_CSPin);
+  uint8_t clk_mask = digitalPinToBitMask(_CLKPin);
+  uint8_t mosi_mask = digitalPinToBitMask(_MOSIPin);
+  
+  // Get ports for SPI Master signals
+  uint8_t cs_port = digitalPinToPort(_CSPin);
+  uint8_t clk_port = digitalPinToPort(_CLKPin);
+  uint8_t mosi_port = digitalPinToPort(_MOSIPin);
+  
+  // Get output registers for SPI Master signals
+  volatile uint8_t *cs_reg = portOutputRegister(cs_port);
+  volatile uint8_t *clk_reg = portOutputRegister(clk_port);
+  volatile uint8_t *mosi_reg = portOutputRegister(mosi_port);
+  
+  *cs_reg &= ~cs_mask;
+  
+  // Delay to meet chip select setup time
+  asm("NOP");
+  
+  // Trasmit Data
+  for (uint8_t i = 0; i < 8; i++)  {
+    *clk_reg &= ~clk_mask;
+
+    if (!!(data & (1 << (7 - i))) > 0) {
+      *mosi_reg |= mosi_mask;
+    } else {
+      *mosi_reg &= ~mosi_mask;
+    }
+    
+    *clk_reg |= clk_mask;
+  }
+  
+  *cs_reg |= cs_mask;
+  
+  // Wait for return data
   while (!(SPSR&(1<<SPIF)));
+  
   rxData = SPSR;
   rxData = SPDR;
-  digitalWrite(_CSPin, HIGH);
+  
   return rxData;
 }

@@ -6,18 +6,22 @@
                         //  create a global of the class.
 
 // Constructors
-AutoDriver::AutoDriver(int CSPin, int resetPin, int busyPin)
+AutoDriver::AutoDriver(int CLKPin, int MOSIPin, int CSPin, int resetPin, int busyPin)
 {
   _CSPin = CSPin;
+  _CLKPin = CLKPin;
+  _MOSIPin = MOSIPin;
   _resetPin = resetPin;
   _busyPin = busyPin;
   
   SPIConfig();
 }
 
-AutoDriver::AutoDriver(int CSPin, int resetPin)
+AutoDriver::AutoDriver(int CLKPin, int MOSIPin, int CSPin, int resetPin)
 {
   _CSPin = CSPin;
+  _CLKPin = CLKPin;
+  _MOSIPin = MOSIPin;
   _resetPin = resetPin;
   _busyPin = -1;
 
@@ -26,10 +30,13 @@ AutoDriver::AutoDriver(int CSPin, int resetPin)
 
 void AutoDriver::SPIConfig()
 {
-  pinMode(11, OUTPUT); //MOSI
-  pinMode(12, INPUT);  //MISO
-  pinMode(13, OUTPUT); //SCK
-  pinMode(_CSPin, OUTPUT);
+  pinMode(11, INPUT); //MOSI
+  pinMode(13, INPUT); //SCK
+  pinMode(10, INPUT); //CS
+  pinMode(_CLKPin, OUTPUT);  //CLK
+  pinMode(_MOSIPin, OUTPUT); //MOSI
+  pinMode(_CSPin, OUTPUT);   //CS
+  digitalWrite(_CLKPin, HIGH);
   digitalWrite(_CSPin, HIGH);
   pinMode(_resetPin, OUTPUT);
   if (_busyPin != -1) pinMode(_busyPin, INPUT_PULLUP);
@@ -38,11 +45,11 @@ void AutoDriver::SPIConfig()
   //  bit 7 - SPI interrupt (disable)
   //  bit 6 - SPI peripheral enable (enable)
   //  bit 5 - data order (MSb first)
-  //  bit 4 - master/slave select (master mode)
+  //  bit 4 - master/slave select (slave mode)
   //  bit 3 - CPOL (active high)
   //  bit 2 - CPHA (sample on rising edge)
-  //  bit 1:0 - data rate (8 or 16, depending on SPSR0)
-  SPCR = B01011101;
+  //  bit 1:0 - data rate (ignored in slave mode)
+  SPCR = B01001100;
   
   // SPSR next- not much here, just SPI2X
   //  bit 0 - double clock rate (no)
