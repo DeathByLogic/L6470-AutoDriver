@@ -68,6 +68,8 @@ class AutoDriver
     void softHiZ();
     void hardHiZ();
     
+    // SPI chain index
+    int SPIindex;
     
   private:
     void SPIConfig();
@@ -84,10 +86,12 @@ class AutoDriver
     unsigned long intSpdCalc(float stepsPerSec);
     unsigned long spdCalc(float stepsPerSec);
     int _CSPin;
-	int _CLKPin;
-	int _MOSIPin;
+    int _CLKPin;
+    int _MOSIPin;
     int _resetPin;
     int _busyPin;
+    
+    static int _SPIcount;
 };
 
 // User constants for public functions.

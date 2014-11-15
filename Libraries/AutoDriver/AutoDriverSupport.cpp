@@ -283,11 +283,13 @@ unsigned long AutoDriver::xferParam(unsigned long value, byte bitLen)
 //  http://www.deathbylogic.com/2014/10/spi-over-long-distances/ 
 byte AutoDriver::SPIXfer(byte data)
 {
+  byte rxTemp;
   byte rxData;
+  byte txData;
   
   // The built in Arduino digitalWrite function is to slow to use for the SPI  
   // bus and the AutoDriver will not respond. So the pins are being accessed
-  // directly to speed up the bus.
+  // directly to speed up the bus write speed.
   
   // Get bit mask for SPI Master signals
   uint8_t cs_mask = digitalPinToBitMask(_CSPin);
@@ -304,31 +306,50 @@ byte AutoDriver::SPIXfer(byte data)
   volatile uint8_t *clk_reg = portOutputRegister(clk_port);
   volatile uint8_t *mosi_reg = portOutputRegister(mosi_port);
   
+  // Set chip select low
   *cs_reg &= ~cs_mask;
   
   // Delay to meet chip select setup time
   asm("NOP");
   
-  // Trasmit Data
-  for (uint8_t i = 0; i < 8; i++)  {
-    *clk_reg &= ~clk_mask;
-
-    if (!!(data & (1 << (7 - i))) > 0) {
-      *mosi_reg |= mosi_mask;
+  // Loop though for each device in the SPI chain
+  for (int x = 1; x <= _SPIcount; x++) {
+    // Send '0' as filler for other devices
+    if ((_SPIcount - x) == SPIindex){
+      txData = data;
     } else {
-      *mosi_reg &= ~mosi_mask;
+      txData = 0x00;
+    }
+
+    // Trasmit Data
+    for (uint8_t y = 0; y < 8; y++)  {
+      *clk_reg &= ~clk_mask;
+
+      if (!!(txData & (1 << (7 - y))) > 0) {
+        *mosi_reg |= mosi_mask;
+      } else {
+        *mosi_reg &= ~mosi_mask;
+      }
+      
+      *clk_reg |= clk_mask;
     }
     
-    *clk_reg |= clk_mask;
+    // Wait for return data
+    while (!(SPSR&(1<<SPIF)));
+    
+    // Read data and clear SPIF flag
+    rxTemp = SPDR;
+    
+    // Save returned data from correct device
+    if ((_SPIcount - x) == SPIindex) {
+      rxData = rxTemp;
+    }
+    
   }
   
+  // Set chip select high
   *cs_reg |= cs_mask;
-  
-  // Wait for return data
-  while (!(SPSR&(1<<SPIF)));
-  
-  rxData = SPSR;
-  rxData = SPDR;
   
   return rxData;
 }
+

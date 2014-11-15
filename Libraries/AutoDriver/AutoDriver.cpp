@@ -41,7 +41,7 @@ void AutoDriver::SPIConfig()
   pinMode(_resetPin, OUTPUT);
   if (_busyPin != -1) pinMode(_busyPin, INPUT_PULLUP);
   
-    // Let's set up the SPI peripheral. SPCR first:
+  // Let's set up the SPI peripheral. SPCR first:
   //  bit 7 - SPI interrupt (disable)
   //  bit 6 - SPI peripheral enable (enable)
   //  bit 5 - data order (MSb first)
@@ -62,6 +62,9 @@ void AutoDriver::SPIConfig()
   _delay_ms(5);
   digitalWrite(_resetPin, HIGH);
   _delay_ms(5);
+  
+  // Config current location in the SPI chain.
+  SPIindex = _SPIcount++;
 }
 
 int AutoDriver::busyCheck(void)
@@ -77,3 +80,5 @@ int AutoDriver::busyCheck(void)
     else                               return 1;
   }
 }
+
+int AutoDriver::_SPIcount = 0;
