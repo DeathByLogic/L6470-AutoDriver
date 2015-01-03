@@ -29,6 +29,7 @@ void AutoDriver::SPIConfig()
   pinMode(11, OUTPUT); //MOSI
   pinMode(12, INPUT);  //MISO
   pinMode(13, OUTPUT); //SCK
+  pinMode(_CSPin, OUTPUT);
   digitalWrite(_CSPin, HIGH);
   pinMode(_resetPin, OUTPUT);
   if (_busyPin != -1) pinMode(_busyPin, INPUT_PULLUP);
