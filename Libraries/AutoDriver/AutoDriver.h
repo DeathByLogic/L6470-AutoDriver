@@ -10,8 +10,8 @@ class AutoDriver
     // Constructors. We'll ALWAYS want a CS pin and a reset pin, but we may
     //  not want a busy pin. By using two constructors, we make it easy to
     //  allow that.
-    AutoDriver(int CLKPin, int MOSIPin, int CSPin, int resetPin, int busyPin);
-    AutoDriver(int CLKPin, int MOSIPin, int CSPin, int resetPin);
+    AutoDriver(int CSPin, int resetPin, int busyPin);
+    AutoDriver(int CSPin, int resetPin);
     
     // These are super-common things to do: checking if the device is busy,
     //  and checking the status of the device. We make a couple of functions
@@ -86,8 +86,6 @@ class AutoDriver
     unsigned long intSpdCalc(float stepsPerSec);
     unsigned long spdCalc(float stepsPerSec);
     int _CSPin;
-    int _CLKPin;
-    int _MOSIPin;
     int _resetPin;
     int _busyPin;
     
