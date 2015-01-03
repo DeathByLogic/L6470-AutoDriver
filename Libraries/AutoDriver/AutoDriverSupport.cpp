@@ -276,62 +276,24 @@ unsigned long AutoDriver::xferParam(unsigned long value, byte bitLen)
 //  after each byte. I can't find a reference to this in the datasheet, which
 //  is AWESOME, and I've personally discovered it at least twice.
 //
-// Modified function to transmit SPI data over software base SPI master and
-//  receive return SPI data on the hardware SPI in slave mode. This will allow
-//  for the transmission of the SPI bus over long distances where the data
-//  would normaly get out of sync with the clock. See link below for more info.
-//  http://www.deathbylogic.com/2014/10/spi-over-long-distances/ 
+// Modified function to allow multiple AutoDrivers daisy-chained on the SPI bus.
+//  Function transmits to one device at a time and sends the NOP command (0x00)
+//  to all other devices on the SPI bus.
 byte AutoDriver::SPIXfer(byte data)
 {
-  byte rxTemp;
   byte rxData;
-  byte txData;
-  
-  // The built in Arduino digitalWrite function is to slow to use for the SPI  
-  // bus and the AutoDriver will not respond. So the pins are being accessed
-  // directly to speed up the bus write speed.
-  
-  // Get bit mask for SPI Master signals
-  uint8_t cs_mask = digitalPinToBitMask(_CSPin);
-  uint8_t clk_mask = digitalPinToBitMask(_CLKPin);
-  uint8_t mosi_mask = digitalPinToBitMask(_MOSIPin);
-  
-  // Get ports for SPI Master signals
-  uint8_t cs_port = digitalPinToPort(_CSPin);
-  uint8_t clk_port = digitalPinToPort(_CLKPin);
-  uint8_t mosi_port = digitalPinToPort(_MOSIPin);
-  
-  // Get output registers for SPI Master signals
-  volatile uint8_t *cs_reg = portOutputRegister(cs_port);
-  volatile uint8_t *clk_reg = portOutputRegister(clk_port);
-  volatile uint8_t *mosi_reg = portOutputRegister(mosi_port);
+  byte rxTemp;
   
   // Set chip select low
-  *cs_reg &= ~cs_mask;
-  
-  // Delay to meet chip select setup time
-  asm("NOP");
+  digitalWrite(_CSPin, LOW);
   
   // Loop though for each device in the SPI chain
   for (int x = 1; x <= _SPIcount; x++) {
     // Send '0' as filler for other devices
     if ((_SPIcount - x) == SPIindex){
-      txData = data;
+      SPDR = data;
     } else {
-      txData = 0x00;
-    }
-
-    // Trasmit Data
-    for (uint8_t y = 0; y < 8; y++)  {
-      *clk_reg &= ~clk_mask;
-
-      if (!!(txData & (1 << (7 - y))) > 0) {
-        *mosi_reg |= mosi_mask;
-      } else {
-        *mosi_reg &= ~mosi_mask;
-      }
-      
-      *clk_reg |= clk_mask;
+      SPDR = 0x00;
     }
     
     // Wait for return data
@@ -344,11 +306,10 @@ byte AutoDriver::SPIXfer(byte data)
     if ((_SPIcount - x) == SPIindex) {
       rxData = rxTemp;
     }
-    
   }
   
   // Set chip select high
-  *cs_reg |= cs_mask;
+  digitalWrite(_CSPin, HIGH);
   
   return rxData;
 }
